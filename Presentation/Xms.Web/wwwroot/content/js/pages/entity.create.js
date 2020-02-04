@@ -48,7 +48,7 @@
                 isSyncLoadSubGrid = true;
             }
             $(function () {
-                $(document).scrollTop(0);
+                
                 if ($('.breadcrumb > li:not(.pull-right)').length <= 1) {
                     $('.breadcrumb').append('<li>' + page_Common_Info.localizeName + '</li>');
                 }
@@ -152,6 +152,8 @@
                     }
                 }
 
+                
+
                 $('.subtools').click(function () {
                     var type = $(this).attr('data-type');
                     if (type == 'attach') {
@@ -215,12 +217,14 @@
                         }
                     }
                     defaultLookupUrl = lookupurl;
-
+                    
+                    
                     //getvalue
                     if (value && value != '') {
                         //syncCount++;
                         hasValueList.push(inputid);
                         getRecordInfo(valueid, function (response) {
+                           
                             if (getPageType() == "edit") {
                                 var sourceAttrDom = $('div.attributesLabel[data-sourceattributename="' + valueid + '"]');
                                 var extAttrDom = $('.extParamEnti[data-extsourceattributename="' + valueid + '"]');
@@ -324,6 +328,9 @@
                                     }
                                 });
                             }
+                            setTimeout(function () {
+                                $(document).scrollTop(0);
+                            }, 0);
                         });
                         //  });
                     }
@@ -447,6 +454,7 @@
                         var changeValue = $(this).val();
                         setlabelsToTarget(changeEntityid, changeValue, function (data) {
                             toSetLabels(that, data, tarType, controlType);
+                            target.Target.trigger('extend.label.changeEnd');
                         });
                     });
                 });
@@ -468,7 +476,7 @@
                         setlabelsToTarget(changeEntityid, changeValue, function (data) {
                             //console.log("setE",data.content);
                             toSetExts(that, data.content, tarType, controltype);
-                            target.Target.on('extend.changeEnd');
+                            target.Target.trigger('extend.changeEnd');
                         });
                     });
                 });
@@ -530,6 +538,7 @@
                                 attr.Target.trigger("label.changeLabel");
                             });
                         }
+                        
                     });
                 }
                 //Xms.Page.getAttribute('serviceid').Target.attr('data-customfilter', '{"FilterOperator":0,"Conditions":[{"AttributeName":"createdon","Operator":2,"Values":["2015-10-24"]}],"Filters":[]}');
@@ -553,11 +562,18 @@
                             var url = location.href;
                             url = $.setUrlParam(url, 'copyid', null);
                             if (_formSaveAction == Xms.FormSaveAction.save) {
+                               
                                 url = $.setUrlParam(url, 'recordid', data.Extra.id);
+                                if (Xms.Page.PageContext.EntityName == 'Roles') {
+                                    url = ORG_SERVERURL + '/role/editrole?id=' + data.Extra.id
+                                }
                                 location.href = url;
                             }
                             else if (_formSaveAction == Xms.FormSaveAction.saveAndNew) {
                                 url = $.setUrlParam(url, 'recordid', null);
+                                if (Xms.Page.PageContext.EntityName == 'Roles') {
+                                    url = ORG_SERVERURL + '/role/editrole?id=' + data.Extra.id
+                                }
                                 location.href = url;
                             }
                             else if (_formSaveAction == Xms.FormSaveAction.saveAndClose) {
@@ -629,6 +645,10 @@
                                 });
                             }
                         });
+
+                        //如果有字段是富文本的话
+                       
+
                         if (flag == false) {
                             return false;
                         }
@@ -637,7 +657,25 @@
                         $('#child').val(encodeURIComponent(JSON.stringify(gridDatas)));
                     } else {
                         // $('#child').val('');
-                    }
+                        }
+                        $('form:first').find('textarea.ntext').each(function () {
+                            var html = $(this).val();
+                            html = decodeURIComponent(html);
+                            var $html = $(html);
+                            var $wrap = $('<div></div>');
+                          //  $wrap.appendTo($('body'));
+                            $wrap.html(html);
+                            if (editor_files) {
+                                $.each(editor_files, function (i,n) {
+                                    var $file = $wrap.find('img[title="' + n._id + '"]');
+                                    if ($file.length > 0) {
+                                        var url_pre = '/upload/attachment/'+CURRENT_USER.organizationid+'/'
+                                        $file.attr('src', url_pre+ n._id + '.' + n.filetype.replace('image\/',''));
+                                    }
+                                });
+                            }
+                            $(this).val($wrap.html());
+                        });
                     console.log('dirtyChecker.isDirty', dirtyChecker.isDirty);
                     formIsSave = false;//防止重复提交
                 }, { //setting
@@ -697,6 +735,9 @@
                     // var isdisabled = $(this).prop('readonly');
                     // if(isdisabled)return false;
                     // console.log('datepicker.isdisabled',isdisabled);
+                    if ($(this).prop('readonly')) {
+                        $(this).parents('.form-items-row:first').find('label').attr('for', '');
+                    }
                     if (format.indexOf("hh:mm") > -1) {
                         format = format.replace("yyyy", "Y").replace("dd", "d").replace("hh", "h").replace("mm", "i").replace('MM', "m").replace('ss', "s").replace('HH', "H").replace('h', "H");
                         $(this).datetimepicker({
@@ -936,6 +977,7 @@
         $context.val('');
         type = type || 'name';
         controltype = controltype || "nvarchar";
+        $context.trigger('extend.ClearBefore');
         if ($context.is(":disabled")) { return false; }
         if (controltype == "lookup" || controltype == "owner" || controltype == "customer") {
             $context.val('');
@@ -950,6 +992,7 @@
         } else {
             $context.val('');
         }
+        $context.trigger('extend.clearEnd')
     }
 
     function removeLabelParam(context, type, controltype) {
@@ -1119,7 +1162,7 @@
                     callback && callback($this);
                 }
                 var grid = new entityDatagrid(_id, $grid, datas);
-
+                $this.data().__entityDatagrid = grid;
                 // grid.setDatas(datas);
                 // grid.loadDatagird($grid);
 
@@ -1151,6 +1194,7 @@
             parent[method](document.body);
         }
     }
+    window.editor_files = [];
     window.setlabelsToTarget = setlabelsToTarget;
     window.selectRecordCallback = selectRecordCallback;
     window.pageWrap_Create = pageWrap_Create;

@@ -5288,7 +5288,8 @@ $(function () {
         this.opts.extend = function (datagrid) {//扩展基础信息
             //因为需要修改为GET获取数据，要重新配置列排序信息
             var filter = function (postData, objP, DM, PM, FM) {
-                var post = { sortby: objP.dataIndx, sortdirection: objP.dir == 'up' ? '0' : '1', pagesize: PM.rPP };
+                var sortindx = objP.dataIndx || 'createdon' || 'name' || objP.dataIndx;
+                var post = { sortby: sortindx, sortdirection: objP.dir == 'up' ? '0' : '1', pagesize: PM.rPP };
                 if (self.opts.filters) {
                     post.filter = self.opts.filters.getFilterInfo()
                 }
@@ -6641,9 +6642,14 @@ $(function () {
     iframeLinks.prototype.refreshIframe = function (id) {
         var self = this;
         var index = $.indexBykeyValue(this.list, 'id', id);
+        
         if (index != -1) {
             var data = this.list[index];
-            $('#' + prefixname + data.id).attr('src', data.src);
+            var _src = data.src;
+            if (data.src && data.src.indexOf(ORG_SERVERURL) == -1 && data.src.indexOf('http') == -1) {
+                _src = ORG_SERVERURL + data.src;
+            }
+            $('#' + prefixname + data.id).attr('src', _src);
         }
     }
     iframeLinks.prototype.openByGroups = function (id) {

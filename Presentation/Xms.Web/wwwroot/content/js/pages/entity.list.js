@@ -419,19 +419,25 @@
         loadButtons: function (callback) {
             var showarea = { glo: 2, inline: 3 };//2,在列表页头部按钮，3列表行内按钮
             //行内按钮
-            var btnStr = '';
+            var btnStr = [];
 
             //视图上方按钮
             var $queryviewButtons = $('#queryviewButtons');
             var gloBtnStr = '';
-
+            $('body').trigger('queryview.prevLoadButton', { datas:datas});
             datas.inlinebtnlength = 0;
+            datas.inlineBtnsInfo = [];
             if (datas.buttonsinfo && datas.buttonsinfo.length > 0) {
                 $.each(datas.buttonsinfo, function (i, n) {
                     if (n.showarea == showarea.glo) {
                         gloBtnStr += '<a class="' + n.cssclass + ' ' + (n.isvisibled ? '' : ' hide ') + '" href="javascript:void(0)" title="' + n.label + '" onclick="' + n.jsaction + '" ' + (n.isenabled ? '' : ' disabled ') + ' ><span class="' + n.icon + '"></span> ' + (n.showlabel ? n.label : '') + '</a> '
                     } else if (n.showarea == showarea.inline/* && n.isenabled*/) {
-                        btnStr += "<li> <a class=\"" + n.cssclass + " datagrid-inline-btns\" href=\"javascript: void(0)\" title=\"" + n.label + "\" onclick=\"" + n.jsaction + "\"><span class=\"" + n.icon + "\"></span> " + (n.showlabel ? n.label : '') + "</a></li>";
+                        if (datas.ItemButtonTmpl && typeof datas.ItemButtonTmpl == 'function') {
+                            btnStr .push(datas.ItemButtonTmpl(n,datas));
+                        } else {
+                            btnStr.push( "<li> <a class=\"" + n.cssclass + " datagrid-inline-btns\" href=\"javascript: void(0)\" title=\"" + n.label + "\" onclick=\"" + n.jsaction + "\"><span class=\"" + n.icon + "\"></span> " + (n.showlabel ? n.label : '') + "</a></li>");
+                        }
+                        datas.inlineBtnsInfo.push(n);
                         datas.inlinebtnlength++;
                     }
                     if (n.jslibrary) {
@@ -439,14 +445,18 @@
                         datas.jslibs.push(lib[1]);
                     }
                 });
-                if (btnStr != '') {
-                    datas.gridviewItemBtnstmpl = '<div class="btn-group " style="position:relative;"><div class="btn btn-link dropdown-toggle btn-prevent datatable-itembtn"  aria-expanded="false" style="height: 100%;width:100%;line-height:0.5;text-align:left;padding: 6px 0px;"><span class="caret" style = "top:-3px;" ></span ></div ><ul  class="btn-list  dropdown-menu">' + btnStr + '</ul></div>';
+                if (btnStr.length>0) {
+                    datas.gridviewItemBtnstmpl = ['<div class="btn-group " style="position:relative;"><div class="btn btn-link dropdown-toggle btn-prevent datatable-itembtn"  aria-expanded="false" style="height: 100%;width:100%;line-height:0.5;text-align:left;padding: 6px 0px;"><span class="caret" style = "top:-3px;" ></span ></div ><ul  class="btn-list  dropdown-menu">' , btnStr , '</ul></div>'];
+                    if (datas.customRenderItemButtons && typeof datas.customRenderItemButtons == 'function') {
+                        datas.gridviewItemBtnstmpl = datas.customRenderItemButtons(btnStr);
+                    }
                 }
                 if (gloBtnStr != '') {
                     datas.globtnstr = '<div class=" margin-bottom" style="position:relative;">' + gloBtnStr + '</div>';
                     $queryviewButtons.html(datas.globtnstr)
                 }
             }
+            $('body').trigger('queryview.afterLoadButton', { datas: datas });
             callback && callback();
         },
         loadDataTable: function () {
@@ -966,13 +976,13 @@
             });
             return res
         }
-
+        datagridconfig._attributeInfos = datas.inlineBtnsInfo;
         // 操作列按钮配置
         var $gridviewItemBtnstmpl = datas.gridviewItemBtnstmpl;
         if ($gridviewItemBtnstmpl) {
-            var itemtmpl = $gridviewItemBtnstmpl
-            itemtmpl = itemtmpl.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-            datagridconfig.itemsBtnTmpl = itemtmpl;
+           // var itemtmpl = $gridviewItemBtnstmpl
+          //  itemtmpl = itemtmpl.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+            datagridconfig.itemsBtnTmpl = $gridviewItemBtnstmpl;
         }
         $('body').trigger('queryview.itemBtnTmpl', { itemBtnTmpl: datagridconfig.itemBtnTmpl, datagridconfig: datagridconfig });
         var $summary = "";
@@ -1369,6 +1379,7 @@
         var height = $(window).height() - top;
         $("#entityCreateIframe").height(height - 20);
         $("#entityCreateSection").height(height);
+       
         if (type == 'show') {
             //  $("#entityCreateSection").show();
             if (url && url != '' && url.indexOf('\/') == 0) {

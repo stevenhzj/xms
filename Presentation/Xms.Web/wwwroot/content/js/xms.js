@@ -400,6 +400,17 @@
                 console.log(res);
                 return res;
             }
+            //给单据体各行设置数据
+            this.setDataEveryRow = function (gridname,datas) {
+                this._init(arguments);
+                var $datagrid = this.getGrid(gridname)
+                var $trs = $datagrid.find('.pq-grid-cont-inner:first').find('tr.pq-grid-row');
+                $trs.each(function () {
+                    var $this = $(this);
+                    var index = $this.index() - 1;
+                    self.setRowData(gridname, index, datas, true);
+                });
+            }
             //只刷新表格不获取数据
             this.refreshView = function (gridname, callback) {
                 this._init(arguments);
@@ -429,6 +440,55 @@
                     self.refreshDataAndView(gridname)
                 }
             }
+            this.bindRefresh = function (gridname,callback) {
+                this._init(arguments);
+                var $datagrid = this.getGrid(gridname);
+                //$datagrid.trigger('datagrid.refresh', { event: event, ui: ui, dataIndx: dataIndx, rowData: rowData, colModel, colModel, grid: self });
+                $datagrid.on('datagrid.refresh', callback);
+            }
+            this.bindAddRow = function (gridname, callback) {
+                this._init(arguments);
+                var $datagrid = this.getGrid(gridname);
+               
+                $datagrid.on('gridview.addRow', callback);
+            }
+            this.bindDelRow = function (gridname, callback) {
+                this._init(arguments);
+                var $datagrid = this.getGrid(gridname);
+
+                $datagrid.on('gridview.deleteRow', callback);
+            }
+            this.bindRemoveRow = function (gridname, callback) {
+                this._init(arguments);
+                var $datagrid = this.getGrid(gridname);
+
+                $datagrid.on('gridview.removeRow', callback);
+            }
+            this.bindRemoveLocalRow = function (gridname, callback) {
+                this._init(arguments);
+                var $datagrid = this.getGrid(gridname);
+
+                $datagrid.on('gridview.removeLocalRow', callback);
+            }
+            this.bindCtrl = function (gridname, callback) {
+                this.bindRefresh(gridname, callback); console.log(1);
+                this.bindAddRow(gridname, callback); console.log(2);
+                this.bindDelRow(gridname, callback); console.log(3);
+                this.bindRemoveRow(gridname, callback); console.log(4);
+                this.bindRemoveLocalRow(gridname, callback); console.log(5);
+            }
+            this.bindInitAfter = function (gridname, callback) {
+                this._init(arguments);
+                var $datagrid = this.getGrid(gridname);
+
+                $datagrid.on('gridview.getDataAfter', callback);
+            }
+            this.removeAllData = function (gridname) {
+                this._init(arguments);
+                var $datagrid = this.getGrid(gridname);
+                var dellist = [];
+                var $trs = $datagrid.parent().data().__entityDatagrid.removeAllData();
+            }
             //设置所有TR的属性
             this.setTrsAttr = function (gridname, key, value) {
                 this._init(arguments);
@@ -436,6 +496,20 @@
                 var $trs = $datagrid.find('.pq-grid-cont-inner').each(function () {
                     $(this).find('tr.pq-grid-row').attr(key, value);
                 });
+            }
+            this.getDatas = function (gridname) {
+                this._init(arguments);
+                var $datagrid = this.getGrid(gridname);
+                var datas = [];
+                if (typeof entityDatagirdList != 'undefined') {
+                    var grid = $.queryBykeyValue(entityDatagirdList.list, '__id', gridname);
+                    if (grid.length > 0) {
+                        datas = $.grep(grid[0].localDatas, function (n,i) {
+                            return (n.cdatagrid_editer == 'old' || n.isEdited == true);
+                        });
+                    }
+                }
+                return datas;
             }
             //添加监听事件
             this.onCellEvent = function (gridname, event, func) {
@@ -451,6 +525,31 @@
             this.onCellEditBeforeSave = function (gridname, func) {
                 this.onCellEvent(gridname, 'datagrid.cellbeforesave', func);
             }
+            //设置某一引用字段选择时不能重复
+            this.setSelectedFilter = function(gridname,attributename,primarykey) {
+                var filters = {};
+                var datas = Xms.FormGridView.getDatas(gridname);
+                primarykey = primarykey || attributename + ['id'];
+                if (datas.length > 0) {
+                    filters.conditions = [];
+                    filters.Operator = 0;
+                    $.each(datas, function (i, n) {
+                        if (!n[attributename]) return true;
+                        filters.conditions.push({ AttributeName: primarykey, Operator: '1', Values: [n[attributename]] })
+                    });
+                    ;
+                }
+                var props = {};
+                props['__xms_' + attributename + '_filter'] = filters;
+                this.setDataEveryRow(gridname, props);
+            }
+
+            this.setAttributeQueryView = function (gridname, attributename,value) {
+                var props = {};
+                props['__xms_' + attributename + '_queryviewid'] = value;
+                this.setDataEveryRow(gridname, props);
+            }
+            
         };
         //表单中单据体的操作方法
         if (typeof (Xms.FormGridView) == "undefined") {
@@ -833,12 +932,10 @@
     *       @param ordertype:  排序方式，正序/倒序"Ascending/Descending"
     *       如果只传一个参数是会当做一个对象 ：
             { entityname: entityname, parent: parentname, attrname: attrname, itemClick: itemClick, sortby: sortby, isDefaultClick: isDefaultClick, treesort: treesort, ordertype: ordertype };
-            example :
-            Xms.Page.loadFlowLine('BusinessUnit','ParentBusinessUnitId','name',null,'name')
     */
     Xms.Page.loadFlowLine = function (entityname, parentname, attrname, itemClick, sortby, isDefaultClick, callback, treesort, ordertype) {
-        if (typeof Xms_FlowLine !== 'undefined') {
-            
+        if (typeof renderLeftTree === 'function') {
+            console.log('Xms.Page.loadGridViewTree', callback);
             var _args;
             if (arguments.length == 1) {
                 _args = arguments[0];
@@ -846,12 +943,26 @@
             } else {
                 _args = { entityname: entityname, parent: parentname, attrname: attrname, itemClick: itemClick, sortby: sortby, isDefaultClick: isDefaultClick, treesort: treesort, ordertype: ordertype };
             }
-            Xms_FlowLine.loadInitFlowLine($('body'),entityname, parentname, attrname, itemClick, sortby, isDefaultClick, callback, treesort, ordertype);
+            renderLeftTree(_args, callback);
         } else {
             throw new Error("只能在列表页面中使用该方法");
         }
     }
-    
+    Xms.Page.loadFlowLineTotarget = function ($context, entityname, parentname, attrname, itemClick, sortby, isDefaultClick, callback, treesort, ordertype) {
+        if (typeof renderLeftTree === 'function') {
+            console.log('Xms.Page.loadGridViewTree', callback);
+            var _args;
+            if (arguments.length == 1) {
+                _args = arguments[0];
+                callback = _args.callback;
+            } else {
+                _args = { $context: $context, entityname: entityname, parent: parentname, attrname: attrname, itemClick: itemClick, sortby: sortby, isDefaultClick: isDefaultClick, treesort: treesort, ordertype: ordertype };
+            }
+            renderLeftTree(_args, callback);
+        } else {
+            throw new Error("只能在列表页面中使用该方法");
+        }
+    }
 })(window);
 
 ; (function (root) {

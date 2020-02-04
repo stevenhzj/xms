@@ -513,6 +513,9 @@
 
                         if (datas[dataIndx]) {
                             if (typeof entityIframe == 'function') {
+                                if (_entityname == 'roles') {
+                                    return '<a class="text-primary" title="' + (datas['name'] || '') + '" href="javascript: entityIframe(\'show\', \'' + ORG_SERVERURL + '/role/editrole?id=' + recordid + '\');"  >' + (datas['name'] || '') + '</a>';
+                                } 
                                 return '<a class="text-primary" title="' + (datas['name'] || '') + '" href="javascript: entityIframe(\'show\', \'' + ORG_SERVERURL + '/entity/edit?entityid=' + entityid + '&formid' + formid + '=&recordid=' + recordid + '\');"  >' + (datas['name'] || '') + '</a>';
                             } else {
                                 return '<a class="text-primary" title="' + (datas['name'] || '') + '" href="' + ORG_SERVERURL + '/entity/edit?entityid=' + entityid + '&formid' + formid + '=&recordid=' + recordid + '" target="_blank" >' + (datas['name'] || '') + '</a>';
@@ -698,7 +701,7 @@
                             .val(dc);
                         $inp.picklist({
                             required: $inp.is('.required'),
-                            items: item.optionset.items,
+                            items: options,
                             isDefault: true,
                             changeHandler: function (e, obj) {
                             }
@@ -793,8 +796,9 @@
                                 var f = rowData['__xms_' + fieldname + '_filter'] //$('#' + inputid).parents('td:first').attr("data-filter");
                                 if (f) f = f;
                                 else f = null;
-                                if (self.attr('data-defaultviewid') && self.attr('data-defaultviewid') != '') {
-                                    lookupurl = $.setUrlParam(lookupurl, 'queryid', self.attr('data-defaultviewid'));
+                                var queryviewid = rowData['__xms_' + fieldname + '_queryviewid']; 
+                                if (queryviewid) {
+                                    lookupurl = $.setUrlParam(lookupurl, 'queryid', queryviewid);
                                 }
                                 else {
                                     lookupurl = $.setUrlParam(lookupurl, 'entityid', self.attr('data-lookup'));
@@ -1007,7 +1011,7 @@
 
                         format = format.replace("yyyy", "Y").replace("dd", "d").replace("hh", "h").replace("mm", "i").replace('MM', "m").replace('ss', "s").replace('HH', "H").replace('h', "H");
 
-                        if (tempformat.indexOf("hh:mm") > -1) {
+                        if (tempformat.indexOf("HH:mm") > -1 || tempformat.indexOf("hh:mm") > -1) {
                             $inp.datetimepicker({
                                 language: "en"
                                 , step: 15
@@ -1139,6 +1143,7 @@
         // contexts.push('<li class="grid-contextmenu-row" id="grid_menu_row' + this._id + '"><span class="glyphicon glyphicon-ok"></span> 选中行</li>');
 
         if (self.opts.itemsBtnTmpl) {
+            
             var $items = $('<div></div>');
             $items.html(self.opts.itemsBtnTmpl);
             $items.find('li').each(function (i, n) {
@@ -1286,8 +1291,13 @@
             if (_entityname) {
                 _entityname = _entityname.toLowerCase();
             }
-            //添加复选框列
+            //添加操作列
             if (self.opts.itemsBtnTmpl) {
+                self.opts.innserBtnsInfo = $.extend([], self.opts.itemsBtnTmpl);
+                if (self.opts.itemsBtnTmpl.length > 2) {
+                    self.opts.itemsBtnTmpl[1] = self.opts.itemsBtnTmpl[1].join('');
+                }
+                self.opts.itemsBtnTmpl = self.opts.itemsBtnTmpl.join('');
                 config.colModel.unshift(
                     {
                         title: "操作", dataIndx: 'cdatagrid_editer', editable: false, minWidth: 80, notHeaderFilter: true, sortable: false, render: function (ui) {
@@ -1298,12 +1308,64 @@
                             if (recordid == 'noshow') {
                                 return '';
                             } else {
-                                return self.opts.itemsBtnTmpl || '';
+                                var tempBtns = $.extend([], self.opts.innserBtnsInfo);
+
+                                if (tempBtns.length > 2) {
+                                    var htmls = [];
+                                    //$.each(tempBtns[1],function (i, n) {
+                                    //    if (self.opts._attributeInfos && self.opts._attributeInfos.length > 0) {
+                                    //        var btninfo = self.opts._attributeInfos[i];
+                                    //        if (btninfo && btninfo.commandrules) {
+                                               
+                                    //            try {
+                                    //                var rule = JSON.parse(btninfo.commandrules);
+                                    //                if (rule && rule.ValueRules) {
+                                    //                    if (rule.ValueRules.enabled == "true" && rule.ValueRules.visibled == 'true') {
+                                    //                        var flag = false;
+                                    //                        $.each(rule.ValueRules.Values, function (ii, nn) {
+                                    //                            if (nn.Value == datas[nn.Field.toLowerCase()]) {
+                                    //                                    flag = true;
+                                    //                                    return false;
+                                    //                                }
+                                    //                        });
+                                    //                        if (flag == true) {
+                                    //                            htmls.push(n);
+                                    //                        }
+                                    //                    } else {
+                                    //                        var flag = true;
+                                    //                        $.each(rule.ValueRules.Values, function (ii, nn) {
+                                                                
+                                    //                            if (nn.Value == datas[nn.Field.toLowerCase()]) {
+                                    //                                flag = false;
+                                    //                                return false;
+                                    //                            }
+                                    //                        });
+                                    //                        if (flag == true) {
+                                    //                            htmls.push(n);
+                                    //                        }
+                                    //                    }
+                                                        
+                                    //                }
+                                    //                console.log('btn.rule', rule, btninfo);
+                                    //            } catch (e) {
+                                    //                console.error(e);
+                                    //            }
+                                    //        }
+                                    //    } else {
+                                    //        htmls.push(n);
+                                    //    }
+                                    //});
+                                    tempBtns[1] = tempBtns[1].join('');
+                                }
+                                var temp = { btnstr: tempBtns.join('') };
+                                self.$grid.trigger('xmsDatagrid.preItemButtonRender', { ui: ui, btninfo: temp, entityname: _entityname });
+                            
+                                return temp.btnstr || '';
                             }
                         }
                     });
             }
-            //添加操作列
+            //添加复选框列
             if (self.opts.addCheckbox) {
                 self.opts.checkboxinfo ? config.colModel.unshift(self.opts.checkboxinfo) : config.colModel.unshift({
                     title: "", dataIndx: "recordid", maxWidth: 48, minWidth: 48, align: "center", resizable: false,
@@ -1442,6 +1504,18 @@
     cDatagrid.prototype.getRowData = function (index) {
         return this.$grid.pqGrid("getRowData", { rowIndxPage: index });
     }
+    cDatagrid.prototype.removeRowData = function (index) {
+         this.$grid.pqGrid("removeData", { rowIndx: index });
+    }
+    cDatagrid.prototype.removeAllData = function (index) {
+        var self = this;
+        this.$grid.find('.pq-grid-cont-inner:first tr.pq-grid-row').each(function (i, n) {
+            var index = $(n).index()-1;
+            self.removeRowData(index);
+            self.deleteRow(index);
+        });
+        
+    }
     cDatagrid.prototype.setData = function (rowIndex, data) {
         return this.$grid.pqGrid("data", { rowIndxPage: rowIndex, data: data });
     }
@@ -1452,7 +1526,7 @@
 
     cDatagrid.prototype.bindEvent = function () {
         var self = this;
-        this.$plugGrid.on('pqgridrefresh pqgridrefreshrow', function () {
+        this.$plugGrid.on('pqgridrefreshrow', function () {
             var $grid = $(this);
             if (self.opts.headerFilter) {
                 // setTableFilter(self.$grid);

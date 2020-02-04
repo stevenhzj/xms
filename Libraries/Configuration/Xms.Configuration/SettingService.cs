@@ -27,7 +27,7 @@ namespace Xms.Configuration
             _appContext = appContext;
             _currentUser = _appContext.GetFeature<ICurrentUser>();
             _settingRepository = settingRepository;
-            _cache = new CacheManager<Setting>($"{_appContext.OrganizationUniqueName}:settings", SettingCache.BuildKey);
+            _cache = new CacheManager<Setting>($"{_appContext.OrganizationUniqueName}:settings", SettingCache.BuildKey,true);
         }
 
         public virtual bool SaveMany(IList<Setting> entities)
@@ -47,8 +47,12 @@ namespace Xms.Configuration
                     item.OrganizationId = _currentUser.OrganizationId;
                 }
                 result = _settingRepository.CreateMany(entities);
-                //add to cache
-                _cache.SetListItem(entities);
+                //add to cache                
+                foreach (var deleted in entities)
+                {
+                    //remove from cache
+                    _cache.RemoveEntity(deleted);
+                }
             }
             return result;
         }
